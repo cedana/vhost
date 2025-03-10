@@ -61,6 +61,9 @@ pub trait VhostUserFrontend: VhostBackend {
     /// Retrieve a given dma-buf fd from a given backend
     fn get_shared_object(&mut self, uuid: &VhostUserSharedMsg) -> Result<File>;
 
+    /// Start a migration of the device state.
+    fn set_device_state_fd(&mut self, fd: &dyn AsRawFd) -> Result<()>;
+
     /// Retrieve shared buffer for inflight I/O tracking.
     fn get_inflight_fd(
         &mut self,
@@ -484,6 +487,15 @@ impl VhostUserFrontend for Frontend {
         node.check_proto_feature(VhostUserProtocolFeatures::BACKEND_REQ)?;
         let fds = [fd.as_raw_fd()];
         let hdr = node.send_request_header(FrontendReq::SET_BACKEND_REQ_FD, Some(&fds))?;
+        node.wait_for_ack(&hdr).map_err(|e| e.into())
+    }
+
+    fn set_device_state_fd(&mut self, fd: &dyn AsRawFd) -> Result<()> {
+        let mut node = self.node();
+        node.check_proto_feature(VhostUserProtocolFeatures::DEVICE_STATE)?;
+
+        let fds = [fd.as_raw_fd()];
+        let hdr = node.send_request_header(FrontendReq::SET_DEVICE_STATE_FD, Some(&fds))?;
         node.wait_for_ack(&hdr).map_err(|e| e.into())
     }
 
